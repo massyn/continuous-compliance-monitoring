@@ -1,0 +1,375 @@
+{
+    "Description": "Continuous Compliance Monitoring",
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {},
+    "Resources": {
+        "lambdaIngestion": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "index.lambda_handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "lambdaIngestionExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Description": "lambdaIngestion",
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import boto3",
+                                "def lambda_handler(event, context):",
+                                "   return { \"statusCode\" : 200, \"body\" : \"Status ok\" }"
+                            ]
+                        ]
+                    }
+                },
+                "Runtime": "python3.9",
+                "FunctionName": {
+                    "Fn::Sub": "${AWS::StackName}-lambdaIngestion"
+                },
+                "Timeout": 300,
+                "MemorySize": 1024,
+                "TracingConfig": {
+                    "Mode": "Active"
+                },
+                "Environment": {
+                    "Variables": {
+                        "StackName": "${AWS::StackName}",
+                        "S3IngestionBucket": {
+                            "Ref": "S3IngestionBucket"
+                        },
+                        "S3RepositoryBucket": {
+                            "Ref": "S3RepositoryBucket"
+                        }
+                    }
+                }
+            },
+            "DependsOn": [
+                "lambdaIngestionExecutionRole",
+                "S3RepositoryBucket"
+            ]
+        },
+        "lambdaIngestionExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Sub": "${AWS::StackName}-lambdaIngestionExecutionRole"
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:PutObject",
+                                        "s3:DeleteObject",
+                                        "s3:ListBuckets"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":s3:::",
+                                                    {
+                                                        "Ref": "S3RepositoryBucket"
+                                                    },
+                                                    "/*"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":s3:::",
+                                                    {
+                                                        "Ref": "S3IngestionBucket"
+                                                    },
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "myEventPermissions": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": {
+                    "Ref": "lambdaIngestion"
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "s3.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                                "Ref": "S3IngestionBucket"
+                            },
+                            "/*"
+                        ]
+                    ]
+                }
+            }
+        },
+        "S3RepositoryBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "BucketOwnerFullControl",
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                }
+            }
+        },
+        "S3IngestionBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "BucketOwnerFullControl",
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                }
+            }
+        },
+        "lambdaReport": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "index.lambda_handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "lambdaIngestionExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Description": "lambdaReport",
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import boto3",
+                                "def lambda_handler(event, context):",
+                                "   return { \"statusCode\" : 200, \"body\" : \"Status ok\" }"
+                            ]
+                        ]
+                    }
+                },
+                "Runtime": "python3.9",
+                "FunctionName": {
+                    "Fn::Sub": "${AWS::StackName}-lambdaReport"
+                },
+                "Timeout": 300,
+                "TracingConfig": {
+                    "Mode": "Active"
+                },
+                "Environment": {
+                    "Variables": {
+                        "StackName": "${AWS::StackName}",
+                        "S3IngestionBucket": {
+                            "Ref": "S3IngestionBucket"
+                        },
+                        "S3RepositoryBucket": {
+                            "Ref": "S3RepositoryBucket"
+                        }
+                    }
+                }
+            },
+            "DependsOn": [
+                "lambdaIngestionExecutionRole"
+            ]
+        },
+        "lambdaReportFunctionUrl": {
+            "Type": "AWS::Lambda::Url",
+            "Properties": {
+                "AuthType": "NONE",
+                "TargetFunctionArn": {
+                    "Ref": "lambdaReport"
+                }
+            }
+        },
+        "lambdaReportFunctionUrlpermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": {
+                    "Ref": "lambdaReportFunctionUrl"
+                },
+                "Action": "lambda:InvokeFunctionUrl",
+                "Principal": "*",
+                "FunctionUrlAuthType": "NONE"
+            }
+        },
+        "lambdaAggregate": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "index.lambda_handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "lambdaIngestionExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Description": "lambdaAggregate",
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import boto3",
+                                "def lambda_handler(event, context):",
+                                "   return { \"statusCode\" : 200, \"body\" : \"Status ok\" }"
+                            ]
+                        ]
+                    }
+                },
+                "Runtime": "python3.9",
+                "FunctionName": {
+                    "Fn::Sub": "${AWS::StackName}-lambdaAggregate"
+                },
+                "Timeout": 300,
+                "TracingConfig": {
+                    "Mode": "Active"
+                },
+                "Environment": {
+                    "Variables": {
+                        "StackName": "${AWS::StackName}",
+                        "S3IngestionBucket": {
+                            "Ref": "S3IngestionBucket"
+                        },
+                        "S3RepositoryBucket": {
+                            "Ref": "S3RepositoryBucket"
+                        }
+                    }
+                }
+            },
+            "DependsOn": [
+                "lambdaIngestionExecutionRole"
+            ]
+        },
+        "eventbridgeAggregateSchedule": {
+            "Type": "AWS::Events::Rule",
+            "Properties": {
+                "Description": "Scheduled event to trigger the Lambda function lambdaAggregate",
+                "ScheduleExpression": "rate(5 minutes)",
+                "State": "ENABLED",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "lambdaAggregate",
+                                "Arn"
+                            ]
+                        },
+                        "Id": {
+                            "Fn::Sub": "${AWS::StackName}-lambdaAggregate"
+                        }
+                    }
+                ]
+            }
+        },
+        "eventbridgeAggregateSchedulelambdaPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": {
+                    "Ref": "lambdaAggregate"
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "events.amazonaws.com",
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "eventbridgeAggregateSchedule",
+                        "Arn"
+                    ]
+                }
+            },
+            "DependsOn": [
+                "lambdaAggregate",
+                "eventbridgeAggregateSchedule"
+            ]
+        }
+    },
+    "Outputs": {
+        "S3IngestionBucket" : {
+            "Value" : { "Ref" : "S3IngestionBucket"},
+            "Description" : "S3IngestionBucket"
+        },
+        "S3RepositoryBucket" : {
+            "Value" : { "Ref" : "S3RepositoryBucket"},
+            "Description" : "S3RepositoryBucket"
+        },
+        "lambdaIngestion": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "lambdaIngestion",
+                    "Arn"
+                ]
+            },
+            "Description": "Arn for Lambda"
+        },
+        "lambdaReportFunctionUrl": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "lambdaReportFunctionUrl",
+                    "FunctionUrl"
+                ]
+            },
+            "Description": "URL for Lambda function"
+        }
+    }
+}
