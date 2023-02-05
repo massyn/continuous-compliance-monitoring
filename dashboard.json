@@ -157,8 +157,7 @@
                             ":s3:::",
                             {
                                 "Ref": "S3IngestionBucket"
-                            },
-                            "/*"
+                            }
                         ]
                     ]
                 }
