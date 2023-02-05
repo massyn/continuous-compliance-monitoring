@@ -119,4 +119,4 @@ def main(STACKNAME,TEMPLATE):
     print(f"FunctionURL = {outputs['lambdaReportFunctionUrl']}")
     print(f"S3IngestionBucket = {outputs['S3IngestionBucket']}")
 
-main('dashboardxx1','dashboard.json')
+main('dashboard','dashboard.json')
