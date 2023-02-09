@@ -9,16 +9,15 @@ Continuous Compliance Monitoring
 * You need to have an AWS Cognito user pool configured.  You will need to know the `cognito_domain`, `client_id` and `client_secret`
 
 ### Installation
-* Download [lambdaUpdate.py](https://github.com/massyn/cloudformation/blob/main/lambdaUpdate.py) and save it somewhere
-* Edit `refresh.sh` and replace the path of `lambdaUpdate.py` with the path of the file you just downloaded
+
 * Edit [config.json](docs/config.md) and update the cognito variables
    * You will need to leave the `redirect_url` empty until the end.
-* Log onto the AWS account where the solution will be deployed (you may want to set the `AWS_REGION` variable to ensure the `refresh.sh` script can get to AWS...)
-* Run `refresh.sh`
+* Log onto the AWS account where the solution will be deployed (you may want to set the `AWS_REGION` variable to ensure the `deploy.py` script can get to AWS...)
+* Run `deploy.py`
 * On completion, you will receive the Lambda function URL.
 * When you get the Lambda function URL, update the `config.json` file's `redirect_url` parameter with that URL.
 * You will need to also update Cognito with the updated URL.
-* Run `refresh.sh` again to update the `config.json` file in the Lambda function.
+* Run `deploy.py` again to update the `config.json` file in the Lambda function.
 
 ## Configuring
 
