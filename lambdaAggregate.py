@@ -35,6 +35,11 @@ def lambda_handler(event, context):
         
         for x in metric:
             id = x['id']
+            if not '/' in aggregate['hierarchy']:
+                aggregate['hierarchy']['/'] = {}
+            if not slot in aggregate['hierarchy']['/']:
+                aggregate['hierarchy']['/'][slot] = {}
+
             if x.get('status',True) != False:
                 # -- now we try to read it
                 try:
@@ -44,12 +49,6 @@ def lambda_handler(event, context):
                 except:
                     print(f"There is no data yet for metric {id} for slot {slot}")
                     summary = {}
-
-                    if not '/' in aggregate['hierarchy']:
-                        aggregate['hierarchy']['/'] = {}
-                    if not slot in aggregate['hierarchy']['/']:
-                        aggregate['hierarchy']['/'][slot] = {}
-
                     aggregate['hierarchy']['/'][slot][id] = {
                         'title'     : x['title'],
                         'weight'    : x['weight'],
@@ -76,6 +75,11 @@ def lambda_handler(event, context):
                     }
             else:
                 print(f"Metric {id} is disabled -- skipping")
+                # -- if it is switched off, remove any data we have of it
+                for h in aggregate['hierarchy']:
+                    if id in aggregate['hierarchy'][h][slot]:
+                        print(f" - Removing data from hierarchy {h}")
+                        del aggregate['hierarchy'][h][slot][id]
 
     
 

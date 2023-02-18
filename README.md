@@ -40,4 +40,4 @@ TODO
 * Added a new `ingestorPolicy` in `dashboard.json` to grant entities access to use the dashboard resources
 * Fixed a bug in `lambdaReport.py` when `compliance` is a float it would return an `Internal Server Error`
 * Added the Pseudo paramer `AWS::Partition` to the arn for cloudwatch logs to make the script generic for all AWS partitions
-
+* Fixed a bug in `lambdaAggregate.py` that do not delete metrics that have been disabled
