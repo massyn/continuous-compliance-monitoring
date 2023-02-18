@@ -87,50 +87,8 @@
                                         "logs:CreateLogStream",
                                         "logs:PutLogEvents"
                                     ],
-                                    "Resource": "arn:aws:logs:*:*:*"
-                                },
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "s3:GetObject",
-                                        "s3:PutObject",
-                                        "s3:DeleteObject",
-                                        "s3:ListBuckets"
-                                    ],
-                                    "Resource": [
-                                        {
-                                            "Fn::Join": [
-                                                "",
-                                                [
-                                                    "arn:",
-                                                    {
-                                                        "Ref": "AWS::Partition"
-                                                    },
-                                                    ":s3:::",
-                                                    {
-                                                        "Ref": "S3RepositoryBucket"
-                                                    },
-                                                    "/*"
-                                                ]
-                                            ]
-                                        },
-                                        {
-                                            "Fn::Join": [
-                                                "",
-                                                [
-                                                    "arn:",
-                                                    {
-                                                        "Ref": "AWS::Partition"
-                                                    },
-                                                    ":s3:::",
-                                                    {
-                                                        "Ref": "S3IngestionBucket"
-                                                    },
-                                                    "/*"
-                                                ]
-                                            ]
-                                        }
-                                    ]
+                                    "Resource": { "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*" }
+                                     
                                 }
                             ]
                         }
@@ -341,6 +299,70 @@
                 "lambdaAggregate",
                 "eventbridgeAggregateSchedule"
             ]
+        },
+        "ingestorPolicy" : {
+            "Type" : "AWS::IAM::Policy",
+            "Properties" : {
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "cloudformation:DescribeStacks",
+                            "Resource": [
+                              { "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*" }
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject",
+                                "s3:ListBuckets"
+                            ],
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:",
+                                            {
+                                                "Ref": "AWS::Partition"
+                                            },
+                                            ":s3:::",
+                                            {
+                                                "Ref": "S3RepositoryBucket"
+                                            },
+                                            "/*"
+                                        ]
+                                    ]
+                                },
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:",
+                                            {
+                                                "Ref": "AWS::Partition"
+                                            },
+                                            ":s3:::",
+                                            {
+                                                "Ref": "S3IngestionBucket"
+                                            },
+                                            "/*"
+                                        ]
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "PolicyName" : {
+                    "Fn::Sub": "${AWS::StackName}-Ingester-Policy"
+                },
+                "Roles" : [{ "Ref" : "lambdaIngestionExecutionRole" }]
+            }
         }
     },
     "Outputs": {

@@ -289,19 +289,16 @@ def renderEvidence(s3,slot,hierarchy,id,metric,myCompliance,myMetricHistory,temp
                     for d in i:
                         if c == compliance:
                             thisCompliance = d
-                            if d == 1:
+                            if float(d) == 1.0:
                                 tdclass = 'ok'
-                            elif d == -1:
+                            elif float(d) == -1.0:
                                 tdclass = 'neutral'
                             else:
                                 tdclass = 'error'
                         else:
                             tdclass = 'normal'
 
-                        if d == -1:
-                            row += f'<td class={tdclass}>Skipped</td>'
-                        else:
-                            row += f'<td class={tdclass}>{d}</td>'
+                        row += f'<td class={tdclass}>{d}</td>'
                         c += 1
                     row += '</tr>'
 
@@ -309,7 +306,7 @@ def renderEvidence(s3,slot,hierarchy,id,metric,myCompliance,myMetricHistory,temp
                     # - if compliance is empty, we show All
                     # - if set to 1, we only show "Compliance"
                     # - if set to 0, we show everything that is non-compliant.  The trick however is that the compliance field is a float that can be between 0 and 1        
-                    if myCompliance == '' or (int(myCompliance) == 1 and int(thisCompliance) == 1) or (int(myCompliance) == 0 and int(thisCompliance) != 1 and int(thisCompliance) != -1)or (int(myCompliance) == -1 and int(thisCompliance) == -1):
+                    if myCompliance == '' or (myCompliance == '1' and float(thisCompliance) == 1.0) or (myCompliance == '0' and float(thisCompliance) != 1.0 and float(thisCompliance) != -1.0)or (myCompliance == '-1' and float(thisCompliance) == -1.0):
                         html += row
         html += '</table>'
 
