@@ -259,6 +259,7 @@ def main_process(hierarchy,metric,key,rawdata):
 
     return {
         f"{slot}/metric.json"                   : json.loads(metric),
+        f"{slot}/hierarchy.json"                : json.loads(hierarchy),
         f"{slot}/{myMetric['id']}/summary.json" : output['summary'],
         f"{slot}/{myMetric['id']}/detail.json" : {
             'heads' : output['heads'],
