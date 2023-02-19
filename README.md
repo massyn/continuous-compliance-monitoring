@@ -1,6 +1,8 @@
 # continuous-compliance-monitoring
 Continuous Compliance Monitoring
 
+Refer to the [schema](docs/schema.md) for details on the data flow.
+
 ## Getting started
 
 ### Requirements

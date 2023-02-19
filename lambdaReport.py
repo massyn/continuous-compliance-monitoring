@@ -33,9 +33,9 @@ def calculateSCI(data):
     totalweight = 0
     for M in data:
         if M['timestamp'] != None:
-            if M['weight'] > 0:
-                totalscore += M['score']
-                totalweight += M['weight']
+            totalscore += M['score'] * M['weight']
+            totalweight += M['weight']
+
     if totalweight != 0:
         thistotal = totalscore / totalweight
     else:
