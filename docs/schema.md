@@ -153,15 +153,15 @@ A `slot` is a collection of files for the current month.  This ensures that a hi
 
 A typical slot value will be `YYYY-MM`, for example `2023-02`
 
-#### ${slot}/metric.json
+#### $slot/metric.json
 
 The `metric.json` file is copied across to the slot.  This helps to retain a historical trace of what the valid measures were at this point in time.  Note that this file is overwritten by the last metric loaded for that month.
 
-#### ${slot}/hierarchy.json
+#### $slot/hierarchy.json
 
 The `hierarchy.json` file is copied across to the slot.  This helps to retain a historical trace of what the hierarchy was at this point in time.  Note that this file is overwritten by the last metric loaded for that month.
 
-#### ${slot}/${id}/summary.json
+#### $slot/$id/summary.json
 
 The `summary.json` file contains a dictionary of the hierarchy with two fields : the `totalok`, and `total` count for that level in the hierarchy for the particular metric being loaded.
 
@@ -173,7 +173,7 @@ The `summary.json` file contains a dictionary of the hierarchy with two fields :
 }
 ```
 
-#### ${slot}/${id}/metric.json
+#### $slot/$id/metric.json
 
 The `metric.json` file is the dictionary of the specific metric loaded.
 
@@ -188,7 +188,7 @@ The `metric.json` file is the dictionary of the specific metric loaded.
 ```
     Note that the metric details is essentially duplicated from the `metric.json` file loaded into the `${slot}` field.  This is provided to allow quick and easy access to the metric currently loaded here.
 
-#### ${slot}/${id}/detail.json
+#### $slot/$id/detail.json
 
 The `detail.json` file contains the raw data, split by hierarchy.  This is necessary to allow the user to filter and show evidence that they are interested in.
 
@@ -213,7 +213,30 @@ The challenge with this file, is depending on the complexity of your hierarchy, 
 
 ## Aggregator
 
-TODO
+The `lambdaAggregate.py` function is responsible to read the summary files from all metrics loaded in this slot, and combining them into a single file. 
+
+### $slot/aggregate.json
+
+The `aggregate.json` file in the individual `$slot` folders will have the following strucure
+
+* Hierarchy
+   * id
+     * [ totalok , total ]
+
+```json
+{
+    "/": {
+        "IAM-001": [0.5, 2.0],
+        "IAM-002": [1640.0, 1649.0]
+    },
+    "/Unknown": {
+        "IAM-001": [0.5, 2.0],
+        "INF-001": [0.0, 3.0]
+    }
+}
+```
+
+The `aggregate.json` file is recreated every time the lambda function executes.
 
 ## Report
 

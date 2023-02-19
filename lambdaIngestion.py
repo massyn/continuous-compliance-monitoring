@@ -138,7 +138,7 @@ def processInputFile(key,hierarchy,rawdata):
                     output['summary'][H2] = [ 0,0]
 
                 # Ignore (skip) any item where the compliance is -1s
-                if float(compliance) != -1:    
+                if float(compliance) >= 0:
                     output['summary'][H2][0] += float(compliance)
                     output['summary'][H2][1] += 1.0
 
@@ -189,9 +189,10 @@ def processInputFile(key,hierarchy,rawdata):
                             H2 = H2.replace('//','/')
 
                             if not H2 in output['summary']:
-                                output['summary'][H2] = [ 0,0]
-                            output['summary'][H2][0] += float(compliance)
-                            output['summary'][H2][1] += 1.0
+                                output['summary'][H2] = [ 0,0 ]
+                            if float(compliance) >=0 :
+                                output['summary'][H2][0] += float(compliance)
+                                output['summary'][H2][1] += 1.0
                 row += 1
         return output
 

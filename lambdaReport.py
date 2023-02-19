@@ -28,68 +28,42 @@ def todo_weighted_score(value,target):
     else:
         return (( value - target) / (1- target ) * (1 - pivotpoint) )+ pivotpoint
 
-def calculateSCI(data):
-    totalscore = 0.0
-    totalweight = 0
-    for M in data:
-        if M['timestamp'] != None:
-            totalscore += M['score'] * M['weight']
-            totalweight += M['weight']
-
-    if totalweight != 0:
-        thistotal = totalscore / totalweight
-    else:
-        thistotal = 0
-    return thistotal
-
-def mainDashboard(data,slot,hierarchy):
-
-    q = [ 'id','title','timestamp','weight','target', 'score']
-
+def mainDashboard(data,slot,hierarchy,thistotal):
     out = '<table border=1><tr>'
-    for a in q:
-        if a == 'score':
-            out += f"<th colpan=2>{a}</th>"
-        else:
-            out += f"<th>{a}</th>"
+    out += '<tr><th>ID</th>'
+    out += '<th>Title</th>'
+    out += '<th>Weight</th>'
+    out += '<th>Target</th>'
+    out += '<th colspan=2>Score</th>'
     out += '</tr>'
-
-    for M in data:
+    for id in data:
         out += '<tr>'
-        for r in q:
-            if r == 'id':
-                out += f'<td><a href="?slot={slot}&hierarchy={hierarchy}&id={M[r]}">{M[r]}</td>'
-            elif r == 'score':
-                if M.get('target',0.9) <= M['score']:
-                    tdclass = 'ok'
-                else:
-                    tdclass = 'error'
-                out += f"<td class={tdclass}>{float(M['score']):.2%}</td><td><progress id=\"{M['id']}\" max=\"100\" value=\"{float(M['score'])*100:.2}\"> {float(M['score'])*100:.2} </progress></td>"
-            elif r == 'target':
-                out += f"<td>{M['target']:.2%}</td>"
-            elif r == 'timestamp':
-                if M['timestamp'] == None:
-                    out += "<td>No upload received</td>"
-                else:
-                    out += f"<td>{datetime.datetime.strptime(M['timestamp'], '%Y-%m-%d %H:%M:%S')}</td>"
+        out += f'<td><a href="?slot={slot}&hierarchy={hierarchy}&id={id}">{id}</td>'
+        out += f"<td>{data[id]['title']}</td>"
+        out += f"<td>{data[id]['weight']}</td>"
+        out += f"<td>{data[id]['target']:.2%}</td>"
+        if not 'score' in data[id]:
+            out += '<td> ** No data **</td>'
+        else:
+            if data[id].get('target',0.9) <= data[id]['score']:
+                tdclass = 'ok'
             else:
-                out += f'<td>{M[r]}</td>'
+                tdclass = 'error'
+            out += f"<td class={tdclass}>{float(data[id]['score']):.2%}</td><td><progress id=\"{id}\" max=\"100\" value=\"{float(data[id]['score'])*100:.2}\"> {float(data[id]['score'])*100:.2} </progress></td>"
 
-        out += '</tr>'
-    thistotal =  calculateSCI(data)
+        out += '</tr>\n'
 
     # TODO -- the global target should be somewhere
-    if 0.9 <= thistotal:
+    if 0.9 <= float(thistotal) / 100:
         tdclass = 'ok'
     else:
         tdclass = 'error'
-    out += f'<tr><th colspan=5>Total</th><td class={tdclass}>{thistotal:.2%}</td></tr>'
-
+    out += f'<tr><th colspan=4>Total</th><td colspan=2 class={tdclass}>{(float(thistotal) / 100):.2%}</td></tr>'
     out += '</table>'
 
     return out
 
-def produceHierarchyLookupTable(hierarchy):
+def xxxproduceHierarchyLookupTable(hierarchy):
     def leaf(x,H,parent = ''):
         for y in x:
             # The first item is the main leaf.  Anything after that are either alternate names, wildcards, or CIDR addresses
@@ -150,34 +124,7 @@ def produceHierarchyLookupTable(hierarchy):
 
     return H
 
-# ListOfMeasures will extract all the raw measure data from the aggregate file, and produce an
-# array of all the relevant data necessary to produce an SCI...
-def ListOfMeasures(data,hierarchy,slot):
-    out = []
-
-    for id in data['hierarchy'].get(hierarchy,{}).get(slot,{}):
-        this = data['hierarchy'][hierarchy][slot][id]
-        if this.get('status',True):
-            # == calculate the score
-            if this.get('total',0) != 0:
-                pct = this.get('totalok',0) / this.get('total',0)
-            else:
-                pct = 0
-            out.append({
-                'id'        : id,
-                'title'     : this.get('title',id),
-                'weight'    : this.get('weight',1),
-                'target'    : this.get('target',0.95),
-                'totalok'   : this['totalok'],
-                'total'     : this['total'],
-                'timestamp' : this['timestamp'],
-                'score'     : pct
-            })
-
-    return out
-
-def reportNavigator(cgi, hierarchyData):
-    #slot = event.get('queryStringParameters',{}).get('slot',"{:04d}-{:02d}".format(datetime.date.today().year,datetime.date.today().month))
+def reportNavigator(cgi, hierarchyData,summary):
     slot = cgi.GET('slot')
     hierarchy = cgi.GET('hierarchy')
     id = cgi.GET('id')
@@ -197,7 +144,7 @@ def reportNavigator(cgi, hierarchyData):
             html += f'<option value="{x}">{x}</option>'
     html += '</select>'
     html += '<select name=slot>'
-    for x in last12slots():
+    for x in last12slots("{:04d}-{:02d}".format(datetime.date.today().year,datetime.date.today().month)):
         if slot == x:
             html += f'<option value="{x}" selected>{x}</option>'
         else:
@@ -207,8 +154,8 @@ def reportNavigator(cgi, hierarchyData):
     # == show the IDs
     html += '<select name=id>'
     html += f'<option value="">-- Main screen --</option>'
-    for myid in hierarchyData.get(hierarchy,{}).get(slot,{}):
-        this = hierarchyData[hierarchy][slot][myid]
+    for myid in summary:
+        this = summary[myid]
         if this.get('status',True):
             title = this.get('title',myid)
             if myid == id:
@@ -237,7 +184,7 @@ def reportNavigator(cgi, hierarchyData):
     html += '<input type=submit>'
     html += '</form>'
 
-    return (slot,hierarchy,html,compliance)
+    return (html,compliance)
 
 def renderEvidence(s3,slot,hierarchy,id,metric,myCompliance,myMetricHistory,template):
     try:
@@ -256,7 +203,7 @@ def renderEvidence(s3,slot,hierarchy,id,metric,myCompliance,myMetricHistory,temp
     html += "<table border=1>"
     html += f"<tr><th>id</th><td>{id}</td>"
     html += f"<tr><th>Title</th><td>{metric.get('title','no title')}</td>"
-    html += f"<tr><th>Timestamp</th><td>{metric.get('timestamp','no timestamp')}</td>"
+    #html += f"<tr><th>Timestamp</th><td>{metric.get('timestamp','no timestamp')}</td>"
     html += f"<tr><th>Score</th><td>{metric.get('totalok','no totalok')} / {metric.get('total','no total')} = {pct:.2%}</td>"
     html += f"<tr><th>Weight</th><td>{metric.get('weight',-1)}</td>"
     html += f"<tr><th>Target</th><td>{metric.get('target',0):.2%}</td>"
@@ -313,9 +260,6 @@ def renderEvidence(s3,slot,hierarchy,id,metric,myCompliance,myMetricHistory,temp
 
         return html
 
-
-    #return '<pre>' + json.dumps(detail,indent=4) + '</pre>'
-
 def lambda_handler(event, context):
 
     cgi = lambdaCGI(event)
@@ -342,31 +286,85 @@ def lambda_handler(event, context):
 
     # =====================================================================
     if loggedon:
-        # == grab the aggregate file - it will form the basis of the report queries
         s3 = boto3.client('s3', region_name = os.environ['AWS_REGION'])
-        try:
-            agg = json.loads(s3.get_object(Bucket=os.environ['S3RepositoryBucket'], Key='aggregate.json')['Body'].read().decode('utf-8'))
-            error = ''
-        except:
-            agg = {}
-            error = 'Something went wrong getting the aggregate file'
 
-        (slot,myHierarchyLevel,navHTML,myCompliance) = reportNavigator(cgi,agg['hierarchy'])
+        # -- read the slot from the variables
+        slot = cgi.GET('slot')
+        if slot == None or slot == '':
+            slot = "{:04d}-{:02d}".format(datetime.date.today().year,datetime.date.today().month)
 
-        measuredata = ListOfMeasures(agg,myHierarchyLevel,slot)
+        # -- read the hierarchy from the input
+        hierarchy = cgi.GET('hierarchy')
+        if hierarchy == None or hierarchy == '':
+            hierarchy = '/'
 
-        metricDB = mainDashboard(measuredata,slot,myHierarchyLevel)
-
+        hierarchyList = []
+        # == grab the aggregate file for each month - it will form the basis of the report queries
+        summary = {}
         mgt = {}
         last = {}
         ps = 'xxxxx'  # grab the last value
-        for s in last12slots():
-            
-            md = ListOfMeasures(agg,myHierarchyLevel,s)
-            mgt[s] = "{:.2f}".format(calculateSCI(md) * 100)
-            last[s] = mgt.get(ps,0)
-            ps = s
+        for mySlot in last12slots(slot):
+            # == grab the metrics file
+            try:
+                metric = json.loads(s3.get_object(Bucket=os.environ['S3RepositoryBucket'], Key=f"{mySlot}/metric.json")['Body'].read().decode('utf-8'))
+            except:
+                metric = {}
+            try:
+                agg = json.loads(s3.get_object(Bucket=os.environ['S3RepositoryBucket'], Key=f"{mySlot}/aggregate.json")['Body'].read().decode('utf-8'))
+                error = ''
+            except:
+                agg = {}
 
+            if not mySlot in summary:
+                summary[mySlot] = {}
+
+            # -- build the hierarchyList
+            for h in agg:
+                if not h in hierarchyList:
+                    hierarchyList.append(h)
+
+            if hierarchy in agg:
+                # -- merge the metric data into the summary
+                
+                for id in agg[hierarchy]:
+                    myMetric = {}
+                    for m in metric:
+                        if m.get('id') == id:
+                            summary[mySlot][id] = {
+                                'totalok' : agg[hierarchy][id][0],
+                                'total'   : agg[hierarchy][id][1],
+                                'score'   : (agg[hierarchy][id][0] / agg[hierarchy][id][1]) if agg[hierarchy][id][1] != 0 else -1,
+                                'weight'  : m['weight'],
+                                'target'  : m['target'],
+                                'title'   : m['title']
+                            }
+            
+            # == calculate the SCI score now
+            totalscore = 0.0
+            totalweight = 0
+            for id in summary[mySlot]:
+                M = summary[mySlot][id]
+                if M.get('score',-1) != -1:
+                    totalscore += M['score'] * M['weight']
+                    totalweight += M['weight']
+
+            if totalweight != 0:
+                thistotal = totalscore / totalweight
+            else:
+                thistotal = 0
+            mgt[mySlot] = "{:.2f}".format(thistotal * 100)
+            last[mySlot] = mgt.get(ps,0)
+            ps = mySlot
+            
+        # === if you made it this far, you now have all the information necessary to produce the dashboards
+        # -- agg by slot by measure id has all the measure details
+        # -- mgt has the total calculated score for every slot
+
+        (navHTML,myCompliance) = reportNavigator(cgi,hierarchyList,summary[slot])
+
+        metricDB = mainDashboard(summary[slot],slot,hierarchy,mgt[slot])
+        
         if cgi.GET('id') == '':
             # main page
             management = '\n'.join(template['management']).replace('%TABLE%',metricDB).replace('%DATA%',json.dumps(mgt).replace("\"","'")).replace('%SLOT%',slot).replace('%VALUE%',str(mgt[slot])).replace('%DELTA%',str(last.get(slot,0)))
@@ -374,28 +372,42 @@ def lambda_handler(event, context):
             # metric page
             # -- calculate the metric's last 12 month's data
             metricHistory = {}
-            for thisSlot in last12slots():
-                thisMetric = agg['hierarchy'].get(myHierarchyLevel,{}).get(thisSlot,{}).get(cgi.GET('id'),{})
-                if thisMetric.get('total',0) != 0:
-                    pct = thisMetric.get('totalok',0) / thisMetric.get('total',0)
+            id = cgi.GET('id')
+            for thisSlot in last12slots(slot):
+                if id in summary[thisSlot]:
+                    if summary[thisSlot][id].get('total',0) != 0:
+                        pct = summary[thisSlot][id].get('totalok',0) / summary[thisSlot][id].get('total',0)
+                    else:
+                        pct = 0.0
                 else:
                     pct = 0.0
 
                 metricHistory[thisSlot] = "{:.2f}".format(pct * 100)
 
             # render the rest of the data
-            myMetric = agg['hierarchy'].get(myHierarchyLevel,{}).get(slot,{}).get(cgi.GET('id'),{})
-            management = renderEvidence(s3,slot,myHierarchyLevel,cgi.GET('id'),myMetric,myCompliance,metricHistory,template)
+            myMetric = summary[slot].get(id,{})
+            
+            management = renderEvidence(s3,slot,hierarchy,id,myMetric,myCompliance,metricHistory,template)
 
-        content = f"<p>{navHTML}<p><b>{error}</b></p>{management}"
+            #management += '<pre>' + json.dumps(summary[slot],indent=4) + '</pre>'
+
+        content = f"<p>{navHTML}<p></p>{management}"
     
     return cgi.render(f"{header}{content}{footer}")
 
-def last12slots():
-    now = datetime.datetime.now()
+def last12slots(mySlot):
+    now = datetime.datetime.strptime(mySlot, '%Y-%m')
+
     result = [now.strftime("%Y-%m")]
     for _ in range(0, 11):
         now = now.replace(day=1) - datetime.timedelta(days=1)
         result.append(now.strftime('%Y-%m'))
         
     return reversed(result)
+
+# ================================
+
+if __name__ == '__main__':
+    for x in last12slots('2022-10'):
+        print(x)
+    
