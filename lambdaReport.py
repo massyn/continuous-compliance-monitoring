@@ -32,6 +32,7 @@ def mainDashboard(data,slot,hierarchy,thistotal):
     out = '<table border=1><tr>'
     out += '<tr><th>ID</th>'
     out += '<th>Title</th>'
+    out += '<th>Timestamp</th>'
     out += '<th>Weight</th>'
     out += '<th>Target</th>'
     out += '<th colspan=2>Score</th>'
@@ -40,6 +41,7 @@ def mainDashboard(data,slot,hierarchy,thistotal):
         out += '<tr>'
         out += f'<td><a href="?slot={slot}&hierarchy={hierarchy}&id={id}">{id}</td>'
         out += f"<td>{data[id]['title']}</td>"
+        out += f"<td>{data[id]['_ProcessedDate']}</td>"
         out += f"<td>{data[id]['weight']}</td>"
         out += f"<td>{data[id]['target']:.2%}</td>"
         if not 'score' in data[id]:
@@ -58,7 +60,7 @@ def mainDashboard(data,slot,hierarchy,thistotal):
         tdclass = 'ok'
     else:
         tdclass = 'error'
-    out += f'<tr><th colspan=4>Total</th><td colspan=2 class={tdclass}>{(float(thistotal) / 100):.2%}</td></tr>'
+    out += f'<tr><th colspan=5>Total</th><td colspan=2 class={tdclass}>{(float(thistotal) / 100):.2%}</td></tr>'
     out += '</table>'
 
     return out
@@ -328,17 +330,20 @@ def lambda_handler(event, context):
                 # -- merge the metric data into the summary
                 
                 for id in agg[hierarchy]:
-                    myMetric = {}
-                    for m in metric:
-                        if m.get('id') == id:
-                            summary[mySlot][id] = {
-                                'totalok' : agg[hierarchy][id][0],
-                                'total'   : agg[hierarchy][id][1],
-                                'score'   : (agg[hierarchy][id][0] / agg[hierarchy][id][1]) if agg[hierarchy][id][1] != 0 else -1,
-                                'weight'  : m['weight'],
-                                'target'  : m['target'],
-                                'title'   : m['title']
-                            }
+                    try:
+                        myMetric = json.loads(s3.get_object(Bucket=os.environ['S3RepositoryBucket'], Key=f"{mySlot}/{id}/metric.json")['Body'].read().decode('utf-8'))
+                    except:
+                        myMetric = {}
+
+                    summary[mySlot][id] = {
+                        'totalok' : agg[hierarchy][id][0],
+                        'total'   : agg[hierarchy][id][1],
+                        'score'   : (agg[hierarchy][id][0] / agg[hierarchy][id][1]) if agg[hierarchy][id][1] != 0 else -1,
+                        'weight'  : myMetric.get('weight',1),
+                        'target'  : myMetric.get('target',.9),
+                        'title'   : myMetric.get('title','unknown'),
+                        '_ProcessedDate' : myMetric.get('_ProcessedDate',' ** no upload **')
+                    }
             
             # == calculate the SCI score now
             totalscore = 0.0
